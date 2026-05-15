@@ -1,0 +1,75 @@
+name: Operação Hangar - Deploy Strategies
+on:
+push:
+tags:
+- &#39;v*&#39;
+
+[SIS] [U3] [C5]
+
+4 / 11
+
+permissions:
+contents: write
+actions: write
+jobs:
+audit-and-simulate:
+name: Inspeção de Voo e Validação de Estratégias
+runs-on: ubuntu-latest
+steps:
+- name: Obter código do Hangar
+uses: actions/checkout@v4
+with:
+ref: main
+fetch-depth: 0
+- name: Ler metadados da Tag Anotada
+run: |
+echo &quot;=== EXAMINANDO CERTIFICADO DE VOO ===&quot;
+git show ${{ github.ref_name }} --quiet
+- name: Validar Manifestos do Kubernetes
+run: |
+if [ ! -f k8s/service-router.yml ]; then
+echo &quot;ERRO CRÍTICO: Roteador de tráfego ausente!&quot;
+exit 1
+fi
+echo &quot;Manifesto do roteador válido e estruturado!&quot;
+- name: Simulação de Deploy Seguro (Rollback Automático)
+run: |
+TAG_ATUAL=&quot;${{ github.ref_name }}&quot;
+echo &quot;Iniciando deploy estratégico para a versão:
+$TAG_ATUAL&quot;
+git config --global user.name &quot;Hangar Copilot Bot&quot;
+git config --global user.email &quot;copilot@hangar.com&quot;
+if [ &quot;$TAG_ATUAL&quot; == &quot;v2.1.0&quot; ]; then
+echo &quot;�� ALERTA: Detectada anomalia crítica na
+telemetria da v2.1.0!&quot;
+echo &quot;�� Iniciando procedimento automático de ABORTAR
+DEPLOY (Rollback).&quot;
+# Correção segura usando buffer temporário (.tmp)
+para evitar esvaziar o arquivo
+cat k8s/service-router.yml | sed &#39;s/version:
+candidate/version: stable/g&#39; &gt; k8s/service-router.tmp
+mv k8s/service-router.tmp k8s/service-router.yml
+
+[SIS] [U3] [C5]
+
+5 / 11
+
+git add k8s/service-router.yml
+git commit -m &quot;fix(rollback): força retorno para
+version: stable devido a falha na v2.1.0&quot;
+git push origin main
+echo &quot;✅ Sistema restaurado com sucesso para a versão
+de segurança anterior!&quot;
+exit 1
+fi
+echo &quot;Virando a chave do Roteador para a nova versão
+candidata...&quot;
+cat k8s/service-router.yml | sed &#39;s/version:
+stable/version: candidate/g&#39; &gt; k8s/service-router.tmp
+mv k8s/service-router.tmp k8s/service-router.yml
+git add k8s/service-router.yml
+git commit -m &quot;build(deploy): rota atualizada para
+version: candidate via tag v1.0.0&quot;
+git push origin main
+echo &quot;Deploy concluído com sucesso e gravado no
+repositório!&quot;
